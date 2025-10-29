@@ -1,6 +1,13 @@
+import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
+const app = express();
+const port = 3000;
 dotenv.config();
+
+app.get("/", (req, res) => {
+  res.send("App is running");
+});
 
 const github = axios.create({
   baseURL: "https://api.github.com",
@@ -10,25 +17,41 @@ const github = axios.create({
   },
 });
 
-const getUser = async (userName) => {
+app.get("/user", async (req, res) => {
+  const username = req.query.username;
+  if (!username) {
+    return res.status(404).json({ error: "Pls enter the username" });
+  }
   try {
-    const response = await github.get(`/users/${userName}`);
-    console.log(response.data);
+    const response = await github.get(`/users/${username}`);
+    res.json({ response: response.data.id });
+    console.log(response.data.id);
   } catch (error) {
     console.error("Error", error.response?.data || error.message);
   }
-};
+});
 
-getUser("Gavinduachintha");
-
-const getRepos = async (userName) => {
-  try {
-    const response = await axios.get(`/users/${userName}/repos`);
-    response.data.foreach((repo) => console.log(repo.name));
-  } catch (error) {
-    console.error("Error: ",error.response?.data||error.message);
-    
+app.get("/repos/:username", async (req, res) => {
+  const username = req.params.username;
+  if (!username) {
+    return res.status(404).json({ error: "Username required" });
   }
-};
+  try {
+    const response = await github.get(`/users/${username}/repos`);
+    const repos = response.data.map((repo) => ({
+      name: repo.name,
+      description: repo.description,
+      url: repo.html_url,
+      language: repo.language,
+      updated_at: repo.updated_at,
+    }));
+    res.json(repos);
+  } catch (error) {
+    console.error("Error: ", error.response?.data || error.message);
+  }
+});
 
-getRepos("Gavinduachintha")
+app.listen(port, () => {
+  console.log(`App listening on port ${port}!`);
+});
+

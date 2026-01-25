@@ -510,6 +510,6 @@ This project is licensed under the ISC License.
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the DoBi Team</p>
+  <p>Made with ❤️ by the Gavi</p>
   <p>⭐ Star this repo if you find it useful!</p>
 </div>

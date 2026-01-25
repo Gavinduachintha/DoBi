@@ -1,30 +1,47 @@
 import dotenv from "dotenv";
-import discord from "discord.js";
-import app from "../app";
+import axios from "axios";
 dotenv.config();
 
 export const healthCheck = (req, res) => {
-  res.send("App is running");
+  res.status(200).send("Server is healthy");
 };
 
-const CLIENT_ID = process.env.CLIENT_ID
-const CLIENT_SECRET = process.env.CLIENT_SECRET
-
-
-const client = new discord.Client({
-  intents: [
-    discord.GatewayIntentBits.Guilds,
-    discord.GatewayIntentBits.GuildMessages,
-  ],
-});
-client.on("messageCreate", (message) => {
-  if (message.author.bot) return; // avoid replying to bots
-  message.channel.send("Received the message!");
-});
-
-export const login = (req, res) => {
-  const discordId = req.query.discord_id;
-  const redirectURL = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=repo,user&state=${discordId}`;
+export const login = async (req, res) => {
+  try {
+    const response = await axios.get("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_API_KEY}`,
+      },
+    });
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-client.login(process.env.DISCORD_TOKEN);
+export const displayUser = async (req, res) => {
+  try {
+    const response = await axios.get("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_API_KEY}`,
+      },
+    });
+    res.status(200).json(response.data); // Return the full user object or specific fields
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const displayRepos = async (req, res) => {
+  try {
+    const response = await axios.get("https://api.github.com/user/repos", {
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_API_KEY}`,
+      },
+    });
+    const data = response.data;
+    res.status(200).json({ count: data.length, repositories: data }); // Return the list of repositories
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

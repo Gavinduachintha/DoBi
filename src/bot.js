@@ -1,5 +1,6 @@
-import { Client, GatewayIntentBits } from "discord.js";
-import { login,displayRepos } from "./controllers/urlController.js";
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
+import { getUserRepo } from "./services/githubService.js";
+import { checkGithubConnection } from "./controllers/urlController.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -18,20 +19,60 @@ client.once("ready", () => {
 client.on("messageCreate", async (message) => {
   if (message.content === "!ping") {
     message.reply("Pong!");
-  } else if (message.content.startsWith("!repos")) {
+  }
+  if (message.content === "!repos") {
     try {
-      // Simulate a request or call your controller logic
-      const repos = await displayRepos(
-        {
-          /* mock req */
-        },
-        { json: (data) => data }
-      );
-      message.reply(`You have ${repos.count} repositories.`);
+      const repos = await getUserRepo();
+
+      if (!repos.length) {
+        return message.reply("You have no repositories.");
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle("📦 GitHub Repositories")
+        .setDescription(`You have **${repos.length}** repositories`)
+        .setColor(0x24292e) // GitHub dark
+        .setFooter({ text: "Fetched from GitHub API" })
+        .setTimestamp();
+
+      repos.slice(0, 10).forEach((repo) => {
+        embed.addFields({
+          name: repo.name,
+          value: `[View Repo](${repo.html_url})`,
+          inline: false,
+        });
+      });
+
+      message.reply({ embeds: [embed] });
     } catch (error) {
-      message.reply("Error fetching repos.");
+      message.reply("❌ Failed to fetch repositories.");
     }
   }
+
+  if (message.content === "!status") {
+  try {
+    const user = await checkGithubConnection();
+
+    const embed = new EmbedBuilder()
+      .setTitle("✅ GitHub Login Status")
+      .setURL(user.html_url)
+      .setColor(0x2ea44f) // GitHub green
+      .setThumbnail(user.avatar_url)
+      .addFields(
+        { name: "👤 Username", value: user.login, inline: true },
+        { name: "📦 Public Repos", value: `${user.public_repos}`, inline: true },
+        { name: "👥 Followers", value: `${user.followers}`, inline: true },
+        { name: "🧠 Bio", value: user.bio || "No bio available", inline: false }
+      )
+      .setFooter({ text: "Connected to GitHub" })
+      .setTimestamp();
+
+    message.reply({ embeds: [embed] });
+
+  } catch (error) {
+    message.reply("❌ Not connected to GitHub.");
+  }
+}
 });
 
 client.login(process.env.DISCORD_TOKEN);

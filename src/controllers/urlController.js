@@ -6,39 +6,38 @@ dotenv.config();
 export const healthCheck = (req, res) => {
   res.status(200).send("Server is healthy");
 };
+export const githubLogin = (req, res) => {
+  const clientId = process.env.CLIENT_ID;
+const redirectURI = `${process.env.BASE_URL}/auth/github/callback`;
+  const url =
+    `https://github.com/login/oauth/authorize` +
+    `?client_id=${clientId}` +
+    `&redirect_uri=${redirectURI}` +
+    `&scope=repo user`;
 
-export const checkGithubConnection = async (req, res) => {
-  try {
-    const response = await axios.get("https://api.github.com/user", {
-      headers: {
-        Authorization: `Bearer ${process.env.GITHUB_API_KEY}`,
-      },
-    });
-    // return response.data.login;
-    return response.data
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  res.redirect(url);
 };
 
-export const displayUser = async (req, res) => {
-  try {
-    const response = await axios.get("https://api.github.com/user", {
+export const githubCallback = async (req, res) => {
+  const { code } = req.query;
+  const tokenRespons = await axios.post(
+    "https://github.com/login/oauth/access_token",
+    {
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      code,
+    },
+    {
       headers: {
-        Authorization: `Bearer ${process.env.GITHUB_API_KEY}`,
+        Accept: "application/json",
       },
-    });
-    res.status(200).json(response.data); // Return the full user object or specific fields
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const displayRepos = async (req, res) => {
-  try {
-    const repos = await getUserRepo();
-    res.status(200).json({ count: repos.length, repositories: repos }); // Return the list of repositories
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    },
+  );
+  const token = tokenRespons.data.access_token;
+  const user = await axios.get("https://api.github.com/user", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  res.json({ githubID: user.data.id, username: user.data.login });
 };

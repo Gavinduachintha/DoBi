@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
 import axios from "axios";
-import { getUserRepo } from "../services/githubService.js";
+import jwt from "jsonwebtoken";
+
+import { githubTokenStore } from "../store/tokenStore.js";
+// import { getUserRepo } from "../services/githubService.js";
 dotenv.config();
 
 export const healthCheck = (req, res) => {
@@ -8,7 +11,7 @@ export const healthCheck = (req, res) => {
 };
 export const githubLogin = (req, res) => {
   const clientId = process.env.CLIENT_ID;
-const redirectURI = `${process.env.BASE_URL}/auth/github/callback`;
+  const redirectURI = "http://localhost:3000/auth/github/callback";
   const url =
     `https://github.com/login/oauth/authorize` +
     `?client_id=${clientId}` +
@@ -39,5 +42,37 @@ export const githubCallback = async (req, res) => {
       Authorization: `Bearer ${token}`,
     },
   });
-  res.json({ githubID: user.data.id, username: user.data.login });
+  const jwtPayload = {
+    id: user.data.id,
+    username: user.data.login,
+  };
+
+  const appToken = jwt.sign(jwtPayload, process.env.JSON_WEB_TOKEN, {
+    expiresIn: "1h",
+  });
+    githubTokenStore.set(user.data.id, token);
+  
+  res.json({
+    message: "Authentication successful",
+    user: {
+      token: appToken,
+      id: user.data.id,
+      username: user.data.login,
+      userAvater: user.data.avatar_url,
+    },
+  });
+};
+
+export const displayUser = async (req, res) => {
+  const token = githubTokenStore.get(req.user.data.id);
+  try {
+    const currentUser = await axios.get("https://api.github.com/user/repos", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    res.status(200).json(currentUser.data);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch user data" });
+  }
 };

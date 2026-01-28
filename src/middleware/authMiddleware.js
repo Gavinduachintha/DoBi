@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 dotenv.config();
 
 export const authUser = (req, res, next) => {
@@ -7,8 +8,11 @@ export const authUser = (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const token = authHeader.split(" ")[1];
-  if (token !== process.env.GITHUB_API_KEY) {
-    return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const decode = jwt.verify(token, process.env.JSON_WEB_TOKEN);
+    req.user = decode;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid Token or Expired One" });
   }
-  next();
 };

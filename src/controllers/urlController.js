@@ -3,7 +3,6 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 
 import { githubTokenStore } from "../store/tokenStore.js";
-// import { getUserRepo } from "../services/githubService.js";
 dotenv.config();
 
 export const healthCheck = (req, res) => {
@@ -50,8 +49,8 @@ export const githubCallback = async (req, res) => {
   const appToken = jwt.sign(jwtPayload, process.env.JSON_WEB_TOKEN, {
     expiresIn: "1h",
   });
-    githubTokenStore.set(user.data.id, token);
-  
+  githubTokenStore.set(user.data.id, token);
+
   res.json({
     message: "Authentication successful",
     user: {
@@ -64,9 +63,14 @@ export const githubCallback = async (req, res) => {
 };
 
 export const displayUser = async (req, res) => {
-  const token = githubTokenStore.get(req.user.data.id);
+  const token = githubTokenStore.get(req.user.id);
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "GitHub token not found. Please login again." });
+  }
   try {
-    const currentUser = await axios.get("https://api.github.com/user/repos", {
+    const currentUser = await axios.get("https://api.github.com/user", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

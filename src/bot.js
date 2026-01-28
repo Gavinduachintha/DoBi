@@ -1,11 +1,14 @@
 import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
-import { getUserRepo } from "./services/githubService.js";
-import {
-  // checkGithubConnection,
-  githubLogin,
-} from "./controllers/urlController.js";
+import { getUserRepo, getUserData } from "./services/githubService.js";
+import { githubTokenStore } from "./store/tokenStore.js";
 import dotenv from "dotenv";
 dotenv.config();
+
+// Helper to get token for a user (for now using first stored token - in production, map Discord users to GitHub users)
+const getStoredToken = () => {
+  const tokens = [...githubTokenStore.values()];
+  return tokens.length > 0 ? tokens[0] : null;
+};
 
 const client = new Client({
   intents: [
@@ -40,7 +43,11 @@ client.on("messageCreate", async (message) => {
   }
   if (message.content === "!repos") {
     try {
-      const repos = await getUserRepo();
+      const token = getStoredToken();
+      if (!token) {
+        return message.reply("❌ Please login first using !login");
+      }
+      const repos = await getUserRepo(token);
 
       if (!repos.length) {
         return message.reply("You have no repositories.");
@@ -69,7 +76,11 @@ client.on("messageCreate", async (message) => {
 
   if (message.content === "!status") {
     try {
-      const user = await checkGithubConnection();
+      const token = getStoredToken();
+      if (!token) {
+        return message.reply("❌ Please login first using !login");
+      }
+      const user = await getUserData(token);
 
       const embed = new EmbedBuilder()
         .setTitle("✅ GitHub Login Status")
